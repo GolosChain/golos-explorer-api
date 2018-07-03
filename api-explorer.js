@@ -22,11 +22,12 @@
 			const db = client.db('Golos');
 			const account_object = db.collection('account_object');
 			
-			getAccounts = (skip, callback) => {
+			getAccounts = (skip, limit, sort, callback) => {
 				account_object
 					.find({})
-					.limit(50)
 					.skip(parseInt(skip))
+					.limit(parseInt(limit))
+					.sort(sort)
 					.toArray(/* (err, accounts) => {
 						return accounts;
 					} */)
@@ -39,7 +40,7 @@
 						catch (e) {
 							//console.error(e);
 						}
-						return { name: account.name, post_count: account.post_count, vesting_shares: account.vesting_shares_value, balance: account.balance_value, sbd_balance: account.sbd_balance_value, profile_image: profile_image }
+						return { name: account.name, post_count: account.post_count, vesting_shares_value: account.vesting_shares_value, balance_value: account.balance_value, sbd_balance_value: account.sbd_balance_value, profile_image: profile_image }
 					}))
 					.then(accounts => {
 						callback(accounts);
@@ -53,8 +54,17 @@
 	});
 	
 	app.get('/getAccounts', (req, res) => {
-		if ( ! req.query.start) req.query.start = 0;
-		getAccounts((req.query.start), (accounts) => {
+		if ( ! req.query.startRow) req.query.startRow = 0;
+		if ( ! req.query.endRow) req.query.endRow = 100;
+		if (req.query.sortModel) {
+			let sort = {};
+			req.query.sortModel.forEach((row) => {
+				sort[row.colId] = (row.sort == 'asc' ? 1 : -1);
+			});
+			req.query.sortModel = sort;
+		}
+		else req.query.sortModel = {};
+		getAccounts(req.query.startRow, req.query.endRow, req.query.sortModel, (accounts) => {
 			res.send(accounts);
 		});
 	});
