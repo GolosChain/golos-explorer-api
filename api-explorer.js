@@ -22,13 +22,12 @@
 			const db = client.db('Golos');
 			const account_object = db.collection('account_object');
 			
-			getAccounts = (skip, limit, sort, find, callback) => {
-				console.log(find);
+			getAccounts = (query, callback) => {
 				account_object
-					.find(find)
-					.skip(parseInt(skip))
-					.limit(parseInt(limit))
-					.sort(sort)
+					.find(query.filterModel)
+					.skip(query.startRow)
+					.limit(query.endRow)
+					.sort(query.sortModel)
 					.toArray(/* (err, accounts) => {
 						return accounts;
 					} */)
@@ -46,11 +45,12 @@
 					.then(accounts => {
 						account_object.countDocuments()
 							.then(count => {
-								if (find) count = accounts.length;
+								if (Object.keys(query.filterModel).length != 0) count = accounts.length;
 								callback({ lastRow: count, rows: accounts });
 							});
 					});
 			}
+			
 			//client.close();
 			
 		}
@@ -58,28 +58,34 @@
 		
 	});
 	
-	app.get('/getAccounts', (req, res) => {
-		if ( ! req.query.startRow) req.query.startRow = 0;
-		if ( ! req.query.endRow) req.query.endRow = 100;
-		if (req.query.sortModel) {
+	let handlerReqAgGrid = (req) => {
+		if (req.startRow) req.startRow = parseInt(req.startRow); else req.startRow = 0;
+		if (req.endRow) req.endRow = parseInt(req.endRow); else req.endRow = 100;
+		if (req.sortModel) {
 			let sort = {};
-			req.query.sortModel.forEach((row) => {
+			req.sortModel.forEach((row) => {
 				sort[row.colId] = (row.sort == 'asc' ? 1 : -1);
 			});
-			req.query.sortModel = sort;
+			req.sortModel = sort;
 		}
-		else req.query.sortModel = {};
-		if (req.query.filterModel) {
+		else req.sortModel = {};
+		if (req.filterModel) {
 			let find = {};
-			for (let indexName in req.query.filterModel) {
-				let findRow = req.query.filterModel[indexName];
+			for (let indexName in req.filterModel) {
+				let findRow = req.filterModel[indexName];
 				if (findRow.filterType == 'number') findRow.filter = parseFloat(findRow.filter);
 				find[indexName] = findRow.filter;
 			}
-			req.query.filterModel = find;
+			req.filterModel = find;
 		}
-		else req.query.filterModel = {};
-		getAccounts(req.query.startRow, req.query.endRow, req.query.sortModel, req.query.filterModel, (accounts) => {
+		else req.filterModel = {};
+		console.log(req.filterModel);
+		return req;
+	};
+	
+	app.get('/getAccounts', (req, res) => {
+		req.query = handlerReqAgGrid(req.query);
+		getAccounts(req.query, (accounts) => {
 			res.send(accounts);
 		});
 	});
