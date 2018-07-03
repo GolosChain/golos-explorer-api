@@ -43,7 +43,10 @@
 						return { name: account.name, post_count: account.post_count, vesting_shares_value: account.vesting_shares_value, balance_value: account.balance_value, sbd_balance_value: account.sbd_balance_value, profile_image: profile_image }
 					}))
 					.then(accounts => {
-						callback(accounts);
+						account_object.countDocuments()
+							.then(count => {
+								callback({ lastRow: count, rows: accounts });
+							});
 					});
 			}
 			//client.close();
