@@ -22,9 +22,10 @@
 			const db = client.db('Golos');
 			const account_object = db.collection('account_object');
 			
-			getAccounts = (skip, limit, sort, callback) => {
+			getAccounts = (skip, limit, sort, find, callback) => {
+				console.log(find);
 				account_object
-					.find({})
+					.find(find)
 					.skip(parseInt(skip))
 					.limit(parseInt(limit))
 					.sort(sort)
@@ -45,6 +46,7 @@
 					.then(accounts => {
 						account_object.countDocuments()
 							.then(count => {
+								if (find) count = accounts.length;
 								callback({ lastRow: count, rows: accounts });
 							});
 					});
@@ -67,7 +69,17 @@
 			req.query.sortModel = sort;
 		}
 		else req.query.sortModel = {};
-		getAccounts(req.query.startRow, req.query.endRow, req.query.sortModel, (accounts) => {
+		if (req.query.filterModel) {
+			let find = {};
+			for (let indexName in req.query.filterModel) {
+				let findRow = req.query.filterModel[indexName];
+				if (findRow.filterType == 'number') findRow.filter = parseFloat(findRow.filter);
+				find[indexName] = findRow.filter;
+			}
+			req.query.filterModel = find;
+		}
+		else req.query.filterModel = {};
+		getAccounts(req.query.startRow, req.query.endRow, req.query.sortModel, req.query.filterModel, (accounts) => {
 			res.send(accounts);
 		});
 	});
